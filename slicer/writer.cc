@@ -990,6 +990,9 @@ void Writer::WriteTryBlocks(const ir::Code* irCode) {
 // "code_item"
 dex::u4 Writer::WriteCode(const ir::Code* irCode) {
   SLICER_CHECK(irCode != nullptr);
+  if (irCode->instructions.empty()) {
+      return 0;
+  }
 
   dex::Code dex_code = {};
   dex_code.registers_size = irCode->registers;
@@ -1037,7 +1040,8 @@ void Writer::WriteEncodedMethod(const ir::EncodedMethod* ir_encoded_method,
   }
   *base_index = ir_encoded_method->decl->index;
 
-  dex::u4 code_offset = FilePointer(ir_encoded_method->code);
+  auto ir_code = ir_encoded_method->code;
+  dex::u4 code_offset = ir_code->instructions.empty() ? 0 : FilePointer(ir_code);
 
   auto& data = dex_->class_data;
   data.PushULeb128(index_delta);
