@@ -15,17 +15,16 @@
  */
 
 #include "slicer/dex_ir.h"
-#include "slicer/chronometer.h"
-#include "slicer/dex_utf8.h"
-#include "slicer/dex_format.h"
 
 #include <algorithm>
 #include <cstdint>
-#include <map>
+#include <cstdlib>
 #include <memory>
 #include <vector>
-#include <functional>
-#include <cstdlib>
+
+#include "slicer/chronometer.h"
+#include "slicer/dex_format.h"
+#include "slicer/dex_utf8.h"
 
 namespace ir {
 
@@ -42,7 +41,8 @@ uint32_t StringsHasher::Hash(const char* string_key) const {
   return HashString(string_key);
 }
 
-bool StringsHasher::Compare(const char* string_key, const String* string) const {
+bool StringsHasher::Compare(const char* string_key,
+                            const String* string) const {
   return dex::Utf8Cmp(string_key, string->c_str()) == 0;
 }
 
@@ -50,7 +50,8 @@ uint32_t ProtosHasher::Hash(const std::string& proto_key) const {
   return HashString(proto_key.c_str());
 }
 
-bool ProtosHasher::Compare(const std::string& proto_key, const Proto* proto) const {
+bool ProtosHasher::Compare(const std::string& proto_key,
+                           const Proto* proto) const {
   return proto_key == proto->Signature();
 }
 
@@ -68,7 +69,8 @@ uint32_t MethodsHasher::Hash(const MethodKey& method_key) const {
                                std::hash<void*>{}(method_key.prototype));
 }
 
-bool MethodsHasher::Compare(const MethodKey& method_key, const EncodedMethod* method) const {
+bool MethodsHasher::Compare(const MethodKey& method_key,
+                            const EncodedMethod* method) const {
   return method_key.class_descriptor == method->decl->parent->descriptor &&
          method_key.method_name == method->decl->name &&
          method_key.prototype == method->decl->prototype;
@@ -80,7 +82,8 @@ inline auto Comp(const dex::u4& i, const dex::u4& j) {
   return 0;
 }
 
-inline auto operator<=>(const AnnotationElement& a, const AnnotationElement& b) {
+inline auto operator<=>(const AnnotationElement& a,
+                        const AnnotationElement& b) {
   return Comp(a.name->index, b.name->index);
 }
 
@@ -106,10 +109,10 @@ inline auto operator<=>(const ir::Class& a, const ir::Class& b) {
 
 inline auto operator<=>(const ir::MethodDecl& a, const ir::MethodDecl& b) {
   return (a.parent->index != b.parent->index)
-         ? Comp(a.parent->index, b.parent->index)
+             ? Comp(a.parent->index, b.parent->index)
          : (a.name->index != b.name->index)
-           ? Comp(a.name->index, b.name->index)
-           : Comp(a.prototype->index, b.prototype->index);
+             ? Comp(a.name->index, b.name->index)
+             : Comp(a.prototype->index, b.prototype->index);
 }
 
 inline auto operator<=>(const ir::String& a, const ir::String& b) {
@@ -122,17 +125,18 @@ inline auto operator<=>(const ir::Type& a, const ir::Type& b) {
 
 inline auto operator<=>(const ir::FieldDecl& a, const ir::FieldDecl& b) {
   return (a.parent->index != b.parent->index)
-         ? Comp(a.parent->index, b.parent->index)
+             ? Comp(a.parent->index, b.parent->index)
          : (a.name->index != b.name->index)
-           ? Comp(a.name->index, b.name->index)
-           : Comp(a.type->index, b.type->index);
+             ? Comp(a.name->index, b.name->index)
+             : Comp(a.type->index, b.type->index);
 }
 
 inline auto operator<=>(const ir::EncodedField& a, const ir::EncodedField& b) {
   return Comp(a.decl->index, b.decl->index);
 }
 
-inline auto operator<=>(const ir::EncodedMethod& a, const ir::EncodedMethod& b) {
+inline auto operator<=>(const ir::EncodedMethod& a,
+                        const ir::EncodedMethod& b) {
   return Comp(a.decl->index, b.decl->index);
 }
 
@@ -143,10 +147,12 @@ inline auto operator<=>(const ir::Proto& a, const ir::Proto& b) {
   std::vector<Type*> empty;
   const auto& aParamTypes = a.param_types ? a.param_types->types : empty;
   const auto& bParamTypes = b.param_types ? b.param_types->types : empty;
-  auto less = [](const Type* t1, const Type* t2) { return t1->index < t2->index; };
-  if (std::lexicographical_compare(
-          aParamTypes.begin(), aParamTypes.end(), bParamTypes.begin(),
-          bParamTypes.end(), less)) {
+  auto less = [](const Type* t1, const Type* t2) {
+    return t1->index < t2->index;
+  };
+  if (std::lexicographical_compare(aParamTypes.begin(), aParamTypes.end(),
+                                   bParamTypes.begin(), bParamTypes.end(),
+                                   less)) {
     return -1;
   }
   return 1;
@@ -175,30 +181,36 @@ Type::Category Type::GetCategory() const {
 // Create the corresponding JNI signature:
 //  https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/types.html#type_signatures
 std::string Proto::Signature() const {
-  std::string ss;
-  ss += "(";
+  slicer::StringStream ss;
+  ss << "(";
   if (param_types != nullptr) {
     for (const auto& type : param_types->types) {
-      ss += type->descriptor->c_str();
+      ss << type->descriptor->c_str();
     }
   }
-  ss += ")";
-  ss += return_type->descriptor->c_str();
-  return ss;
+  ss << ")";
+  ss << return_type->descriptor->c_str();
+  return ss.str();
 }
 
+bool MethodHandle::IsField() {
+  return (method_handle_type == dex::METHOD_HANDLE_TYPE_STATIC_PUT ||
+          method_handle_type == dex::METHOD_HANDLE_TYPE_STATIC_GET ||
+          method_handle_type == dex::METHOD_HANDLE_TYPE_INSTANCE_PUT ||
+          method_handle_type == dex::METHOD_HANDLE_TYPE_INSTANCE_GET);
+}
 
-template<typename RandomIt>
+template <typename RandomIt>
 inline void QuickSortPointer(RandomIt first, RandomIt last) {
   using ValueType = typename std::iterator_traits<RandomIt>::value_type;
   if (first == last) return;
-  std::qsort(&*first, last - first, sizeof(ValueType),
-             +[](const void* a, const void* b) -> int {
-                 auto i = static_cast<const ValueType*>(a);
-                 auto j = static_cast<const ValueType*>(b);
-                 return **i <=> **j;
-             }
-  );
+  std::qsort(
+      &*first, last - first, sizeof(ValueType),
+      +[](const void* a, const void* b) -> int {
+        auto i = static_cast<const ValueType*>(a);
+        auto j = static_cast<const ValueType*>(b);
+        return **i <=> **j;
+      });
 }
 
 // Helper for IR normalization
@@ -232,7 +244,7 @@ void DexFile::TopSortClassIndex(Class* irClass, dex::u4* nextIndex) {
       }
     }
 
-    SLICER_CHECK(*nextIndex < classes.size());
+    SLICER_CHECK_LT(*nextIndex, classes.size());
     irClass->index = (*nextIndex)++;
   }
 }
@@ -270,12 +282,14 @@ static void NormalizeClass(Class* irClass) {
 }
 
 // Prepare the IR for generating a .dex image
-// (the .dex format requires a specific sort order for some of the arrays, etc...)
+// (the .dex format requires a specific sort order for some of the arrays,
+// etc...)
 //
 // TODO: not a great solution - move this logic to the writer!
 //
 // TODO: the comparison predicate can be better expressed by using std::tie()
-//  Ex. FieldDecl has a method comp() returning tie(parent->index, name->index, type->index)
+//  Ex. FieldDecl has a method comp() returning tie(parent->index, name->index,
+//  type->index)
 //
 void DexFile::Normalize() {
   // sort build the .dex indexes
@@ -339,4 +353,4 @@ void DexFile::Normalize() {
   }
 }
 
-} // namespace ir
+}  // namespace ir

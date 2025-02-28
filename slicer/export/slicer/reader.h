@@ -16,27 +16,33 @@
 
 #pragma once
 
+#include <assert.h>
+#include <stdlib.h>
+
+#include <map>
+#include <memory>
+
 #include "common.h"
 #include "dex_format.h"
 #include "dex_ir.h"
 
-#include <assert.h>
-#include <stdlib.h>
-#include <map>
-#include <memory>
+class DexHelper;
 
 namespace dex {
 
-inline constexpr uint8_t opcode_len[] = {
-        1, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 2, 2, 3, 5, 2, 2, 3, 2, 1, 1, 2,
-        2, 1, 2, 2, 3, 3, 3, 1, 1, 2, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1,
-        1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 1, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2,
-        2, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, // removed in Android 12
+inline constexpr uint8_t opcode_len[] =
+    {
+        1, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 2, 2,
+        3, 5, 2, 2, 3, 2, 1, 1, 2, 2, 1, 2, 2, 3, 3, 3, 1, 1, 2, 3, 3, 3, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3,
+        1, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2,  // removed in Android 12
         1, 1, 1, 1, 1, 1, 1, 4, 4, 3, 3, 2, 2};
 static_assert(sizeof(opcode_len) == 256);
 
@@ -49,13 +55,14 @@ static_assert(sizeof(opcode_len) == 256);
 //
 class Reader {
  public:
-  Reader(const dex::u1* image, size_t size, const dex::u1* data = nullptr, size_t data_size = 0);
+  Reader(const dex::u1* image, size_t size, const dex::u1* data = nullptr,
+         size_t data_size = 0);
   ~Reader() = default;
 
   Reader(Reader&&) = default;
   Reader& operator=(Reader&&) = default;
 
-  // No copy semantics
+  // No copy/move semantics
   Reader(const Reader&) = delete;
   Reader& operator=(const Reader&) = delete;
 
@@ -70,13 +77,16 @@ class Reader {
   slicer::ArrayView<const dex::FieldId> FieldIds() const;
   slicer::ArrayView<const dex::MethodId> MethodIds() const;
   slicer::ArrayView<const dex::ProtoId> ProtoIds() const;
+  slicer::ArrayView<const dex::MethodHandle> MethodHandles() const;
   const dex::MapList* DexMapList() const;
 
   static bool IsCompact(const void* image) {
-    const auto *header = reinterpret_cast<const struct Header*>(image);
-    if (header->magic[0] == 'd' && header->magic[1] == 'e' && header->magic[2] == 'x' && header->magic[3] == '\n') {
+    const auto* header = reinterpret_cast<const struct Header*>(image);
+    if (header->magic[0] == 'd' && header->magic[1] == 'e' &&
+        header->magic[2] == 'x' && header->magic[3] == '\n') {
       return false;
-    } else if (header->magic[0] == 'c' && header->magic[1] == 'd' && header->magic[2] == 'e' && header->magic[3] == 'x') {
+    } else if (header->magic[0] == 'c' && header->magic[1] == 'd' &&
+               header->magic[2] == 'e' && header->magic[3] == 'x') {
       return true;
     }
     return false;
@@ -88,20 +98,6 @@ class Reader {
   void CreateClassIr(dex::u4 index);
   dex::u4 FindClassIndex(const char* class_descriptor) const;
 
-  // Convert a file pointer (absolute offset) to an in-memory pointer
-  template <class T>
-  const T* ptr(u4 offset) const {
-    SLICER_CHECK(offset >= 0 && offset + sizeof(T) <= size_);
-    return reinterpret_cast<const T*>(image_ + offset);
-  }
-
-  // Convert a data section file pointer (absolute offset) to an in-memory pointer
-  // (offset should be inside the data section)
-  template <class T>
-  const T* dataPtr(size_t offset) const {
-    SLICER_CHECK((is_compact_ || offset >= header_->data_off) && offset + sizeof(T) <= data_size_);
-    return reinterpret_cast<const T*>(data_ + offset);
-  }
  private:
   // Internal access to IR nodes for indexed .dex structures
   ir::Class* GetClass(dex::u4 index);
@@ -110,6 +106,7 @@ class Reader {
   ir::MethodDecl* GetMethodDecl(dex::u4 index);
   ir::Proto* GetProto(dex::u4 index);
   ir::String* GetString(dex::u4 index);
+  ir::MethodHandle* GetMethodHandle(dex::u4 index);
 
   // Parsing annotations
   ir::AnnotationsDirectory* ExtractAnnotations(dex::u4 offset);
@@ -121,6 +118,7 @@ class Reader {
   ir::ParamAnnotation* ParseParamAnnotation(const dex::u1** pptr);
   ir::EncodedField* ParseEncodedField(const dex::u1** pptr, dex::u4* baseIndex);
   ir::Annotation* ParseAnnotation(const dex::u1** pptr);
+  ir::MethodHandle* ParseMethodHandle(dex::u4 index);
 
   // Parse encoded values and arrays
   ir::EncodedValue* ParseEncodedValue(const dex::u1** pptr);
@@ -129,7 +127,8 @@ class Reader {
 
   // Parse root .dex structures
   ir::Class* ParseClass(dex::u4 index);
-  ir::EncodedMethod* ParseEncodedMethod(const dex::u1** pptr, dex::u4* baseIndex);
+  ir::EncodedMethod* ParseEncodedMethod(const dex::u1** pptr,
+                                        dex::u4* baseIndex);
   ir::Type* ParseType(dex::u4 index);
   ir::FieldDecl* ParseFieldDecl(dex::u4 index);
   ir::MethodDecl* ParseMethodDecl(dex::u4 index);
@@ -141,6 +140,22 @@ class Reader {
   ir::DebugInfo* ExtractDebugInfo(dex::u4 offset);
   ir::Code* ExtractCode(dex::u4 offset);
   void ParseInstructions(slicer::ArrayView<const dex::u2> code);
+
+  // Convert a file pointer (absolute offset) to an in-memory pointer
+  template <class T>
+  const T* ptr(int offset) const {
+    SLICER_CHECK_GE(offset, 0 && offset + sizeof(T) <= size_);
+    return reinterpret_cast<const T*>(image_ + offset);
+  }
+
+  // Convert a data section file pointer (absolute offset) to an in-memory
+  // pointer (offset should be inside the data section)
+  template <class T>
+  const T* dataPtr(size_t offset) const {
+    SLICER_CHECK((is_compact_ || offset >= header_->data_off) &&
+                 offset + sizeof(T) <= data_size_);
+    return reinterpret_cast<const T*>(data_ + offset);
+  }
 
   // Map an indexed section to an ArrayView<T>
   template <class T>
@@ -177,6 +192,8 @@ class Reader {
   std::map<dex::u4, ir::AnnotationSet*> annotation_sets_;
   std::map<dex::u4, ir::AnnotationsDirectory*> annotations_directories_;
   std::map<dex::u4, ir::EncodedArray*> encoded_arrays_;
+
+  friend class ::DexHelper;
 };
 
 }  // namespace dex

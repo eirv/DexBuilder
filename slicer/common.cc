@@ -18,15 +18,56 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <cstdarg>
+
 #include <set>
 #include <utility>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 namespace slicer {
+
+static void log_(const std::string& msg) {
+#ifdef __ANDROID__
+  __android_log_write(ANDROID_LOG_ERROR, "slicer", msg.c_str());
+#else
+  printf("%s", msg.c_str());
+  fflush(stdout);
+#endif
+}
+
+static logger_type log = log_;
+
+void set_logger(logger_type new_logger) { log = new_logger; }
 
 // Helper for the default SLICER_CHECK() policy
 void _checkFailed(const char* expr, int line, const char* file) {
-  printf("\nSLICER_CHECK failed [%s] at %s:%d\n\n", expr, file, line);
+  StringStream ss;
+  ss << endl << "SLICER_CHECK failed [";
+  ss << expr << "] at " << file << ":" << line;
+  ss << endl << endl;
+  log(ss.str());
+  abort();
+}
+
+void _checkFailedOp(const void* lhs, const void* rhs, const char* op,
+                    const char* suffix, int line, const char* file) {
+  StringStream ss;
+  ss << endl << "SLICER_CHECK_" << suffix << " failed [";
+  ss << lhs << " " << op << " " << rhs;
+  ss << "] at " << file << ":" << line;
+  log(ss.str());
+  abort();
+}
+
+void _checkFailedOp(uint32_t lhs, uint32_t rhs, const char* op,
+                    const char* suffix, int line, const char* file) {
+  StringStream ss;
+  ss << endl << "SLICER_CHECK_" << suffix << " failed [";
+  ss << lhs << " " << op << " " << rhs;
+  ss << "] at " << file << ":" << line;
+  log(ss.str());
   abort();
 }
 
@@ -40,18 +81,19 @@ thread_local std::set<std::pair<int, const char*>> weak_failures;
 void _weakCheckFailed(const char* expr, int line, const char* file) {
   auto failure_id = std::make_pair(line, file);
   if (weak_failures.find(failure_id) == weak_failures.end()) {
-    printf("\nSLICER_WEAK_CHECK failed [%s] at %s:%d\n\n", expr, file, line);
+    StringStream ss;
+    ss << endl << "SLICER_WEAK_CHECK failed [";
+    ss << expr << "] at " << file << ":";
+    ss << line << endl << endl;
+    log(ss.str());
     weak_failures.insert(failure_id);
   }
 }
 
 // Prints a formatted message and aborts
-void _fatal(const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  vprintf(format, args);
-  va_end(args);
+void _fatal(const std::string& msg) {
+  log("SLICER_FATAL: " + msg);
   abort();
 }
 
-} // namespace slicer
+}  // namespace slicer

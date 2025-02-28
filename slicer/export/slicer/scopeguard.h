@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <utility>
+
 namespace slicer {
 
 // A simple and lightweight scope guard and macro
@@ -31,45 +33,36 @@ namespace slicer {
 // "file" will be closed at the end of the enclosing scope,
 //  regardless of how the scope is exited
 //
-class ScopeGuardHelper
-{
-    template<class T>
-    class ScopeGuard
-    {
-    public:
-        explicit ScopeGuard(T closure) :
-            closure_(std::move(closure))
-        {
-        }
+class ScopeGuardHelper {
+  template <class T>
+  class ScopeGuard {
+   public:
+    explicit ScopeGuard(T closure) : closure_(std::move(closure)) {}
 
-        ~ScopeGuard()
-        {
-            closure_();
-        }
+    ~ScopeGuard() { closure_(); }
 
-        // move constructor only
-        ScopeGuard(ScopeGuard&&) = default;
-        ScopeGuard(const ScopeGuard&) = delete;
-        ScopeGuard& operator=(const ScopeGuard&) = delete;
-        ScopeGuard& operator=(ScopeGuard&&) = delete;
+    // move constructor only
+    ScopeGuard(ScopeGuard&&) = default;
+    ScopeGuard(const ScopeGuard&) = delete;
+    ScopeGuard& operator=(const ScopeGuard&) = delete;
+    ScopeGuard& operator=(ScopeGuard&&) = delete;
 
-    private:
-        T closure_;
-    };
+   private:
+    T closure_;
+  };
 
-public:
-    template<class T>
-    ScopeGuard<T> operator<<(T closure)
-    {
-        return ScopeGuard<T>(std::move(closure));
-    }
+ public:
+  template <class T>
+  ScopeGuard<T> operator<<(T closure) {
+    return ScopeGuard<T>(std::move(closure));
+  }
 };
 
-#define SLICER_SG_MACRO_CONCAT2(a, b) a ## b
+#define SLICER_SG_MACRO_CONCAT2(a, b) a##b
 #define SLICER_SG_MACRO_CONCAT(a, b) SLICER_SG_MACRO_CONCAT2(a, b)
-#define SLICER_SG_ANONYMOUS(prefix)  SLICER_SG_MACRO_CONCAT(prefix, __COUNTER__)
+#define SLICER_SG_ANONYMOUS(prefix) SLICER_SG_MACRO_CONCAT(prefix, __COUNTER__)
 
 #define SLICER_SCOPE_EXIT \
-    auto SLICER_SG_ANONYMOUS(_scope_guard_) = slicer::ScopeGuardHelper() << [&]()
+  auto SLICER_SG_ANONYMOUS(_scope_guard_) = slicer::ScopeGuardHelper() << [&]()
 
-} // namespace slicer
+}  // namespace slicer

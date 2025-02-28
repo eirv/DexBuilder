@@ -16,18 +16,31 @@
 
 #pragma once
 
-#include "dex_format.h"
+#include "buffer.h"
+#include "chronometer.h"
+#include "code_ir.h"
+#include "common.h"
+#include "dex_ir.h"
 
-// MUTF-8 (Modified UTF-8) Encoding helpers:
-// https://source.android.com/devices/tech/dalvik/dex-format.html
+namespace lir {
 
-namespace dex {
+// Generates try/catch blocks from code IR
+class TryBlocksEncoder : public Visitor {
+ private:
+  virtual bool Visit(TryBlockEnd* try_end) override;
 
-// Compare two '\0'-terminated modified UTF-8 strings, using Unicode
-// code point values for comparison. This treats different encodings
-// for the same code point as equivalent, except that only a real '\0'
-// byte is considered the string terminator. The return value is as
-// for strcmp().
-int Utf8Cmp(const char* s1, const char* s2);
+ public:
+  explicit TryBlocksEncoder(const InstructionsList& instructions)
+      : instructions_(instructions) {}
 
-}  // namespace dex
+  ~TryBlocksEncoder() = default;
+
+  void Encode(ir::Code* ir_code, std::shared_ptr<ir::DexFile> dex_ir);
+
+ private:
+  slicer::Buffer handlers_;
+  slicer::Buffer tries_;
+  const InstructionsList& instructions_;
+};
+
+}  // namespace lir

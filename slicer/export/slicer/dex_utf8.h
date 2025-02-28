@@ -16,35 +16,18 @@
 
 #pragma once
 
-#include "common.h"
+#include "dex_format.h"
 
-#include <assert.h>
-#include <stdlib.h>
+// MUTF-8 (Modified UTF-8) Encoding helpers:
+// https://source.android.com/devices/tech/dalvik/dex-format.html
 
-namespace slicer {
+namespace dex {
 
-// A shallow, non-owning reference to a "view" inside a memory buffer
-class MemView {
- public:
-  MemView() : ptr_(nullptr), size_(0) {}
+// Compare two '\0'-terminated modified UTF-8 strings, using Unicode
+// code point values for comparison. This treats different encodings
+// for the same code point as equivalent, except that only a real '\0'
+// byte is considered the string terminator. The return value is as
+// for strcmp().
+int Utf8Cmp(const char* s1, const char* s2);
 
-  MemView(const void* ptr, size_t size) : ptr_(ptr), size_(size) {
-    assert(size > 0);
-  }
-
-  ~MemView() = default;
-
-  template <class T = void>
-  const T* ptr() const {
-    return static_cast<const T*>(ptr_);
-  }
-
-  size_t size() const { return size_; }
-
- private:
-  const void* ptr_;
-  size_t size_;
-};
-
-} // namespace slicer
-
+}  // namespace dex

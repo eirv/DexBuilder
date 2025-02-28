@@ -16,15 +16,15 @@
 
 #pragma once
 
-#include "common.h"
-#include "buffer.h"
-#include "arrayview.h"
-#include "dex_format.h"
-#include "dex_ir.h"
-
 #include <map>
 #include <memory>
 #include <vector>
+
+#include "arrayview.h"
+#include "buffer.h"
+#include "common.h"
+#include "dex_format.h"
+#include "dex_ir.h"
 
 namespace dex {
 
@@ -39,18 +39,18 @@ class Section : public slicer::Buffer {
   Section& operator=(const Section&) = delete;
 
   void SetOffset(dex::u4 offset) {
-    SLICER_CHECK(offset > 0 && offset % 4 == 0);
+    SLICER_CHECK_EQ(offset > 0 && offset % 4, 0);
     offset_ = offset;
   }
 
   dex::u4 SectionOffset() const {
-    SLICER_CHECK(offset_ > 0 && offset_ % 4 == 0);
+    SLICER_CHECK_EQ(offset_ > 0 && offset_ % 4, 0);
     return ItemsCount() > 0 ? offset_ : 0;
   }
 
   dex::u4 AbsoluteOffset(dex::u4 itemOffset) const {
-    SLICER_CHECK(offset_ > 0);
-    SLICER_CHECK(itemOffset < size());
+    SLICER_CHECK_GT(offset_, 0);
+    SLICER_CHECK_LT(itemOffset, size());
     return offset_ + itemOffset;
   }
 
@@ -96,7 +96,7 @@ class Index {
   }
 
   dex::u4 SectionOffset() const {
-    SLICER_CHECK(offset_ > 0 && offset_ % 4 == 0);
+    SLICER_CHECK_EQ(offset_ > 0 && offset_ % 4, 0);
     return ItemsCount() > 0 ? offset_ : 0;
   }
 
@@ -135,6 +135,7 @@ class Writer {
           field_ids(dex::kFieldIdItem),
           method_ids(dex::kMethodIdItem),
           class_defs(dex::kClassDefItem),
+          method_handles(dex::kMethodHandleItem),
           string_data(dex::kStringDataItem),
           type_lists(dex::kTypeList),
           debug_info(dex::kDebugInfoItem),
@@ -153,6 +154,7 @@ class Writer {
     Index<dex::FieldId> field_ids;
     Index<dex::MethodId> method_ids;
     Index<dex::ClassDef> class_defs;
+    Index<dex::MethodHandle> method_handles;
 
     Section string_data;
     Section type_lists;
@@ -183,7 +185,8 @@ class Writer {
   Writer& operator=(const Writer&) = delete;
 
   // .dex image creation
-  dex::u1* CreateImage(Allocator* allocator, size_t* new_image_size, bool checksum=false);
+  dex::u1* CreateImage(Allocator* allocator, size_t* new_image_size,
+                       bool checksum);
 
  private:
   // helpers for creating various .dex sections
@@ -205,12 +208,14 @@ class Writer {
   void FillFields();
   void FillMethods();
   void FillClassDefs();
+  void FillMethodHandles();
 
   // helpers for writing .dex structures
   dex::u4 WriteTypeList(const std::vector<ir::Type*>& types);
   dex::u4 WriteAnnotationItem(const ir::Annotation* ir_annotation);
   dex::u4 WriteAnnotationSet(const ir::AnnotationSet* ir_annotation_set);
-  dex::u4 WriteAnnotationSetRefList(const ir::AnnotationSetRefList* ir_annotation_set_ref_list);
+  dex::u4 WriteAnnotationSetRefList(
+      const ir::AnnotationSetRefList* ir_annotation_set_ref_list);
   dex::u4 WriteClassAnnotations(const ir::Class* ir_class);
   dex::u4 WriteDebugInfo(const ir::DebugInfo* ir_debug_info);
   dex::u4 WriteCode(const ir::Code* ir_code);
@@ -224,12 +229,15 @@ class Writer {
   dex::u4 MapFieldIndex(dex::u4 index) const;
   dex::u4 MapMethodIndex(dex::u4 index) const;
   dex::u4 MapProtoIndex(dex::u4 index) const;
+  dex::u4 MapMethodHandleIndex(dex::u4 index) const;
 
   // writing parts of a class definition
   void WriteInstructions(slicer::ArrayView<const dex::u2> instructions);
   void WriteTryBlocks(const ir::Code* ir_code);
-  void WriteEncodedField(const ir::EncodedField* irEncodedField, dex::u4* base_index);
-  void WriteEncodedMethod(const ir::EncodedMethod* irEncodedMethod, dex::u4* base_index);
+  void WriteEncodedField(const ir::EncodedField* irEncodedField,
+                         dex::u4* base_index);
+  void WriteEncodedMethod(const ir::EncodedMethod* irEncodedMethod,
+                          dex::u4* base_index);
 
   dex::u4 FilePointer(const ir::Node* ir_node) const;
 

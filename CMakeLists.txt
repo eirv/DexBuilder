@@ -15,13 +15,22 @@ add_subdirectory(external/parallel_hashmap)
 set(DB_SOURCES
         dex_builder.cc
         dex_helper.cc
-        slicer/reader.cc
-        slicer/writer.cc
-        slicer/dex_ir.cc
+        slicer/bytecode_encoder.cc
+        slicer/code_ir.cc
         slicer/common.cc
-        slicer/dex_format.cc
-        slicer/dex_utf8.cc
+        slicer/control_flow_graph.cc
+        slicer/debuginfo_encoder.cc
         slicer/dex_bytecode.cc
+        slicer/dex_format.cc
+        slicer/dex_ir.cc
+        slicer/dex_ir_builder.cc
+        slicer/dex_utf8.cc
+        slicer/export
+        slicer/instrumentation.cc
+        slicer/reader.cc
+        slicer/sha1.cpp
+        slicer/tryblocks_encoder.cc
+        slicer/writer.cc
         slicer/sha1.cpp
         )
 
@@ -64,5 +73,5 @@ endif()
 add_library(${PROJECT_NAME}_static STATIC ${DB_SOURCES})
 set_target_properties(${PROJECT_NAME}_static PROPERTIES CXX_SCAN_FOR_MODULES ON)
 target_sources(${PROJECT_NAME}_static PUBLIC FILE_SET CXX_MODULES FILES ${DB_MODULES})
-target_include_directories(${PROJECT_NAME}_static PUBLIC include)
+target_include_directories(${PROJECT_NAME}_static PUBLIC include slicer/export)
 target_link_libraries(${PROJECT_NAME}_static PUBLIC z log phmap)

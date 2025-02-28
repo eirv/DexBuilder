@@ -26,8 +26,8 @@ class Chronometer {
 
  public:
   // elapsed time is in milliseconds
-  explicit Chronometer(double& elapsed, bool cumulative = false) :
-              elapsed_(elapsed), cumulative_(cumulative) {
+  explicit Chronometer(double& elapsed, bool cumulative = false)
+      : elapsed_(elapsed), cumulative_(cumulative) {
     start_time_ = Clock::now();
   }
 
@@ -50,4 +50,4 @@ class Chronometer {
   bool cumulative_;
 };
 
-} // namespace slicer
+}  // namespace slicer

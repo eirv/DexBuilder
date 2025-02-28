@@ -16,24 +16,24 @@
 
 #pragma once
 
-#include <vector>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace slicer {
 
 // A specialized Key -> T* map (note that, unlike std:: containers, the values
 // are always pointers here, and we don't explicitly store the lookup keys)
 //
-// Implemented as an incrementally resizable hash table: we split the logical hash table
-// into two internal fixed size tables, the "full table" and a "insertion table".
-// When the insertion table overflows, we allocate a larger hashtable to replace
-// it and "insertion table" becomes the "full table" (the old "full table" is
-// rehashed into the new hash table)
+// Implemented as an incrementally resizable hash table: we split the logical
+// hash table into two internal fixed size tables, the "full table" and a
+// "insertion table". When the insertion table overflows, we allocate a larger
+// hashtable to replace it and "insertion table" becomes the "full table" (the
+// old "full table" is rehashed into the new hash table)
 //
 // Similar to open addressing hash tables, all the buckets are a single,
-// contiguous array. But this table is growing and the collisions are still handled
-// as chains (using indexes instead of pointers).
+// contiguous array. But this table is growing and the collisions are still
+// handled as chains (using indexes instead of pointers).
 //
 // The result is faster than std::unordered_map and uses ~25% of
 // the memory used by std::unordered_map<const char*, String*>
@@ -44,7 +44,7 @@ namespace slicer {
 //   3. key extraction  : Key GetKey(T* value)
 //   4. copy semantics
 //
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 class HashTable {
  private:
   // the index type inside the bucket array
@@ -104,7 +104,7 @@ class HashTable {
   Hash hasher_;
 };
 
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 HashTable<Key, T, Hash>::Partition::Partition(Index size, const Hash& hasher)
     : hash_buckets_(size), hasher_(hasher) {
   // allocate space for the hash buckets + avg chain length
@@ -122,9 +122,9 @@ HashTable<Key, T, Hash>::Partition::Partition(Index size, const Hash& hasher)
 // Returns true if the insertion succeeded, false if the table overflows
 // (we never insert more than the pre-reserved capacity)
 //
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 bool HashTable<Key, T, Hash>::Partition::Insert(T* value) {
-  SLICER_CHECK(value != nullptr);
+  SLICER_CHECK_NE(value, nullptr);
   // overflow?
   if (buckets_.size() + 1 > buckets_.capacity()) {
     return false;
@@ -143,11 +143,13 @@ bool HashTable<Key, T, Hash>::Partition::Insert(T* value) {
   return true;
 }
 
-template<class Key, class T, class Hash>
-T* HashTable<Key, T, Hash>::Partition::Lookup(const Key& key, uint32_t hash_value) const {
+template <class Key, class T, class Hash>
+T* HashTable<Key, T, Hash>::Partition::Lookup(const Key& key,
+                                              uint32_t hash_value) const {
   assert(hash_value == hasher_.Hash(key));
   Index bucket_index = hash_value % hash_buckets_;
-  for (Index index = bucket_index; index != kInvalidIndex; index = buckets_[index].next) {
+  for (Index index = bucket_index; index != kInvalidIndex;
+       index = buckets_[index].next) {
     auto value = buckets_[index].value;
     if (value == nullptr) {
       assert(index < hash_buckets_);
@@ -159,7 +161,7 @@ T* HashTable<Key, T, Hash>::Partition::Lookup(const Key& key, uint32_t hash_valu
   return nullptr;
 }
 
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 void HashTable<Key, T, Hash>::Partition::InsertAll(const Partition& src) {
   for (const auto& bucket : src.buckets_) {
     if (bucket.value != nullptr) {
@@ -171,12 +173,12 @@ void HashTable<Key, T, Hash>::Partition::InsertAll(const Partition& src) {
 // Try to insert into the "insertion table". If that overflows,
 // we allocate a new, larger hash table, move "full table" value to it
 // and "insertion table" becomes the new "full table".
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 void HashTable<Key, T, Hash>::Insert(T* value) {
   assert(Lookup(hasher_.GetKey(value)) == nullptr);
   if (!insertion_table_->Insert(value)) {
-    std::unique_ptr<Partition> new_hash_table(
-        new Partition(insertion_table_->HashBuckets() * kResizeFactor, hasher_));
+    std::unique_ptr<Partition> new_hash_table(new Partition(
+        insertion_table_->HashBuckets() * kResizeFactor, hasher_));
     if (full_table_) {
       new_hash_table->InsertAll(*full_table_);
     }
@@ -188,7 +190,7 @@ void HashTable<Key, T, Hash>::Insert(T* value) {
 
 // First look into the "full table" and if the value is
 // not found there look into the "insertion table" next
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 T* HashTable<Key, T, Hash>::Lookup(const Key& key) const {
   auto hash_value = hasher_.Hash(key);
   if (full_table_) {
@@ -200,8 +202,9 @@ T* HashTable<Key, T, Hash>::Lookup(const Key& key) const {
   return insertion_table_->Lookup(key, hash_value);
 }
 
-template<class Key, class T, class Hash>
-void HashTable<Key, T, Hash>::Partition::PrintStats(const char* name, bool verbose) {
+template <class Key, class T, class Hash>
+void HashTable<Key, T, Hash>::Partition::PrintStats(const char* name,
+                                                    bool verbose) {
   int max_chain_length = 0;
   int sum_chain_length = 0;
   int used_buckets = 0;
@@ -210,8 +213,9 @@ void HashTable<Key, T, Hash>::Partition::PrintStats(const char* name, bool verbo
     if (buckets_[i].value != nullptr) {
       ++used_buckets;
       int chain_length = 0;
-      for (Index ci = i; buckets_[ci].next != kInvalidIndex; ci = buckets_[ci].next) {
-        SLICER_CHECK(buckets_[ci].value != nullptr);
+      for (Index ci = i; buckets_[ci].next != kInvalidIndex;
+           ci = buckets_[ci].next) {
+        SLICER_CHECK_NE(buckets_[ci].value, nullptr);
         ++chain_length;
         if (verbose) printf("*");
       }
@@ -225,13 +229,14 @@ void HashTable<Key, T, Hash>::Partition::PrintStats(const char* name, bool verbo
 
   printf("\nHash table partition (%s):\n", name);
   printf("  hash_buckets                   : %u\n", hash_buckets_);
-  printf("  size/capacity                  : %zu / %zu\n", buckets_.size(), buckets_.capacity());
+  printf("  size/capacity                  : %zu / %zu\n", buckets_.size(),
+         buckets_.capacity());
   printf("  used_buckets                   : %d\n", used_buckets);
   printf("  max_chain_length               : %d\n", max_chain_length);
   printf("  avg_chain_length               : %d\n", avg_chain_length);
 }
 
-template<class Key, class T, class Hash>
+template <class Key, class T, class Hash>
 void HashTable<Key, T, Hash>::PrintStats(const char* name, bool verbose) {
   printf("\nHash table stats (%s)\n", name);
   if (full_table_) {

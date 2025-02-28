@@ -16,36 +16,34 @@
 
 #pragma once
 
+#include <assert.h>
+#include <stdlib.h>
+
 #include "common.h"
-#include "dex_format.h"
 
-#include <vector>
+namespace slicer {
 
-namespace ir {
-
-// A simple index tracking and allocator
-class IndexMap {
+// A shallow, non-owning reference to a "view" inside a memory buffer
+class MemView {
  public:
-  dex::u4 AllocateIndex() {
-    const auto size = indexes_map_.size();
-    while (alloc_pos_ < size && indexes_map_[alloc_pos_]) {
-      ++alloc_pos_;
-    }
-    MarkUsedIndex(alloc_pos_);
-    return alloc_pos_++;
+  MemView() : ptr_(nullptr), size_(0) {}
+
+  MemView(const void* ptr, size_t size) : ptr_(ptr), size_(size) {
+    assert(size > 0);
   }
 
-  void MarkUsedIndex(dex::u4 index) {
-    if (index >= indexes_map_.size()) {
-      indexes_map_.resize(index + 1);
-    }
-    SLICER_CHECK(!indexes_map_[index]);
-    indexes_map_[index] = true;
+  ~MemView() = default;
+
+  template <class T = void>
+  const T* ptr() const {
+    return static_cast<const T*>(ptr_);
   }
+
+  size_t size() const { return size_; }
 
  private:
-  std::vector<bool> indexes_map_;
-  dex::u4 alloc_pos_ = 0;
+  const void* ptr_;
+  size_t size_;
 };
 
-}  // namespace ir
+}  // namespace slicer

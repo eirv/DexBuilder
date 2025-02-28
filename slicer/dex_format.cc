@@ -15,11 +15,21 @@
  */
 
 #include "slicer/dex_format.h"
-#include "slicer/common.h"
 
 #include <zlib.h>
 
+#include <cstdlib>
+
+#include "slicer/common.h"
+
 namespace dex {
+
+// The expected format of the magic is dex\nXXX\0 where XXX are digits. We
+// extract this value. Returns 0 if the version can not be parsed.
+u4 HeaderItem::GetVersion(const void* magic) {
+  const char* version = reinterpret_cast<const char*>(magic) + 4;
+  return version[3] == '\0' ? strtol(version, nullptr, 10) : 0;
+}
 
 // Compute the DEX file checksum for a memory-mapped DEX file
 u4 ComputeChecksum(const Header* header) {
@@ -35,15 +45,24 @@ u4 ComputeChecksum(const Header* header) {
 // Returns the human-readable name for a primitive type
 static const char* PrimitiveTypeName(char type_char) {
   switch (type_char) {
-    case 'B': return "byte";
-    case 'C': return "char";
-    case 'D': return "double";
-    case 'F': return "float";
-    case 'I': return "int";
-    case 'J': return "long";
-    case 'S': return "short";
-    case 'V': return "void";
-    case 'Z': return "boolean";
+    case 'B':
+      return "byte";
+    case 'C':
+      return "char";
+    case 'D':
+      return "double";
+    case 'F':
+      return "float";
+    case 'I':
+      return "int";
+    case 'J':
+      return "long";
+    case 'S':
+      return "short";
+    case 'V':
+      return "void";
+    case 'Z':
+      return "boolean";
   }
   SLICER_CHECK(!"unexpected type");
   return nullptr;
@@ -53,7 +72,7 @@ static const char* PrimitiveTypeName(char type_char) {
 // example, "Ljava/lang/String;" becomes "java.lang.String", and
 // "[I" becomes "int[]".
 std::string DescriptorToDecl(const char* descriptor) {
-  std::string ss;
+  slicer::StringStream ss;
 
   int array_dimensions = 0;
   while (*descriptor == '[') {
@@ -63,21 +82,21 @@ std::string DescriptorToDecl(const char* descriptor) {
 
   if (*descriptor == 'L') {
     for (++descriptor; *descriptor != ';'; ++descriptor) {
-      SLICER_CHECK(*descriptor != '\0');
-      ss += (*descriptor == '/' ? '.' : *descriptor);
+      SLICER_CHECK_NE(*descriptor, '\0');
+      ss << (*descriptor == '/' ? '.' : *descriptor);
     }
   } else {
-    ss += PrimitiveTypeName(*descriptor);
+    ss << PrimitiveTypeName(*descriptor);
   }
 
-  SLICER_CHECK(descriptor[1] == '\0');
+  SLICER_CHECK_EQ(descriptor[1], '\0');
 
   // add the array brackets
   for (int i = 0; i < array_dimensions; ++i) {
-    ss += "[]";
+    ss << "[]";
   }
 
-  return ss;
+  return ss.str();
 }
 
 // Converts a type descriptor to a single "shorty" char
@@ -93,13 +112,13 @@ char DescriptorToShorty(const char* descriptor) {
   char short_descriptor = *descriptor;
   if (short_descriptor == 'L') {
     // skip the full class name
-    for(; *descriptor && *descriptor != ';'; ++descriptor) {
-    }
-    SLICER_CHECK(*descriptor == ';');
+    for (; *descriptor && *descriptor != ';'; ++descriptor);
+    SLICER_CHECK_EQ(*descriptor, ';');
   }
 
-  SLICER_CHECK(descriptor[1] == '\0');
-  SLICER_CHECK(short_descriptor == 'L' || PrimitiveTypeName(short_descriptor) != nullptr);
+  SLICER_CHECK_EQ(descriptor[1], '\0');
+  SLICER_CHECK(short_descriptor == 'L' ||
+               PrimitiveTypeName(short_descriptor) != nullptr);
 
   return array_dimensions > 0 ? 'L' : short_descriptor;
 }

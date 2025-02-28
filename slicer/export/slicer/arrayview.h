@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include "common.h"
-
 #include <stdlib.h>
+
+#include "common.h"
 
 namespace slicer {
 
@@ -39,7 +39,7 @@ class ArrayView {
   T* data() const { return begin_; }
 
   T& operator[](size_t i) const {
-    SLICER_CHECK(i < size());
+    SLICER_CHECK_LT(i, size());
     return *(begin_ + i);
   }
 
@@ -51,4 +51,4 @@ class ArrayView {
   T* end_ = nullptr;
 };
 
-} // namespace slicer
+}  // namespace slicer

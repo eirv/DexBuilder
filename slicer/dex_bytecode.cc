@@ -15,10 +15,11 @@
  */
 
 #include "slicer/dex_bytecode.h"
-#include "slicer/common.h"
 
-#include <assert.h>
 #include <array>
+#include <iomanip>
+
+#include "slicer/common.h"
 
 namespace dex {
 
@@ -37,7 +38,7 @@ static constexpr std::array<InstructionDescriptor, kNumPackedOpcodes>
       index,                                                        \
       flags,                                                        \
   },
-#include "slicer/dex_instruction_list.h"
+#include "export/slicer/dex_instruction_list.h"
         DEX_INSTRUCTION_LIST(INSTRUCTION_DESCR)
 #undef DEX_INSTRUCTION_LIST
 #undef INSTRUCTION_DESCR
@@ -122,7 +123,7 @@ size_t GetWidthFromBytecode(const u2* bytecode) {
 // Dalvik opcode names.
 static constexpr std::array<const char*, kNumPackedOpcodes> gOpcodeNames = {
 #define INSTRUCTION_NAME(o, c, pname, f, i, a, e, v) pname,
-#include "slicer/dex_instruction_list.h"
+#include "export/slicer/dex_instruction_list.h"
     DEX_INSTRUCTION_LIST(INSTRUCTION_NAME)
 #undef DEX_INSTRUCTION_LIST
 #undef INSTRUCTION_NAME
@@ -244,7 +245,7 @@ Instruction DecodeInstruction(const u2* bytecode) {
       switch (dec.vA) {
         case 5:
           // A fifth arg is verboten for inline invokes
-          SLICER_CHECK(format != k35mi);
+          SLICER_CHECK_NE(format, k35mi);
 
           // Per note at the top of this format decoder, the
           // fifth argument comes from the A field in the
@@ -302,8 +303,33 @@ Instruction DecodeInstruction(const u2* bytecode) {
       dec.vB_wide = FetchU8(bytecode + 1);
       return dec;
   }
-  SLICER_FATAL("Can't decode unexpected format 0x%02x (op=0x%02x)", format,
-               opcode);
+
+  slicer::StringStream ss;
+  ss << "Can't decode unexpected format " << format << " for " << opcode;
+  SLICER_FATAL(ss.str());
+}
+
+static inline std::string HexByte(int value) {
+  return slicer::FormatString("%04#x", value);
+}
+
+slicer::StringStream& operator<<(slicer::StringStream& os, Opcode opcode) {
+  return os << "[" << HexByte(opcode) << "] " << gOpcodeNames[opcode];
+}
+
+slicer::StringStream& operator<<(slicer::StringStream& os,
+                                 InstructionFormat format) {
+  switch (format) {
+#define EMIT_INSTRUCTION_FORMAT_NAME(name) \
+  case InstructionFormat::k##name:         \
+    return os << #name;
+#include "export/slicer/dex_instruction_list.h"
+    DEX_INSTRUCTION_FORMAT_LIST(EMIT_INSTRUCTION_FORMAT_NAME)
+#undef EMIT_INSTRUCTION_FORMAT_NAME
+#undef DEX_INSTRUCTION_FORMAT_LIST
+#undef DEX_INSTRUCTION_LIST
+  }
+  return os << "[" << HexByte(format) << "] " << "Unknown";
 }
 
 }  // namespace dex
