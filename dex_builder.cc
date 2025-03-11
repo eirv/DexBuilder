@@ -405,6 +405,13 @@ ir::EncodedMethod *MethodBuilder::Encode() {
             ? 0
             : 1;
     code->outs_count = std::max(return_count, max_args_);
+    if (class_->source_file) {
+      static constexpr ::dex::u1 kDebugInfo[]{::dex::DBG_FIRST_SPECIAL, ::dex::DBG_END_SEQUENCE};
+      auto *debug_info = dex_file()->Alloc<ir::DebugInfo>();
+      debug_info->line_start = 0;
+      debug_info->data = slicer::MemView{kDebugInfo, sizeof(kDebugInfo)};
+      code->debug_info = debug_info;
+    }
     method->code = code;
   }
 
