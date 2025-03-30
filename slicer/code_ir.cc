@@ -411,7 +411,7 @@ void CodeIr::FixupSparseSwitch(SparseSwitchPayload* instr, dex::u4 base_offset,
 }
 
 ArrayData* CodeIr::DecodeArrayData(const dex::u2* ptr, dex::u4 offset) {
-  auto dex_array_data = reinterpret_cast<const dex::ArrayData*>(ptr);
+  [[maybe_unused]] auto dex_array_data = reinterpret_cast<const dex::ArrayData*>(ptr);
   SLICER_CHECK_EQ(dex_array_data->ident, dex::kArrayDataSignature);
   SLICER_CHECK_EQ(offset % 2, 0);
 

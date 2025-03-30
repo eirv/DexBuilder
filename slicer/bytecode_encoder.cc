@@ -140,7 +140,7 @@ bool BytecodeEncoder::Visit(Bytecode* bytecode) {
     opcode = dex::OP_GOTO_16;
   }
 
-  auto buff_offset = bytecode_.size();
+  [[maybe_unused]] auto buff_offset = bytecode_.size();
   auto format = dex::GetFormatFromOpcode(opcode);
 
   switch (format) {
